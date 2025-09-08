@@ -1,6 +1,5 @@
 package com.ikea.warehouse_command_api.data.dto;
 
-import com.ikea.warehouse_command_api.data.dto.ArticleAmount;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;

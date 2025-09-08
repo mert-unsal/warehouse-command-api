@@ -24,7 +24,7 @@ server:
 info:
   app:
     name: ${spring.application.name}
-    description: Warehouse Data Consumer Service for IKEA
+    description: Warehouse command api service for IKEA case study
     version: '@project.version@'
     encoding: '@project.build.sourceEncoding@'
     java:

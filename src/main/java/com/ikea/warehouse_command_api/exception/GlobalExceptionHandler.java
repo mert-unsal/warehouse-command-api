@@ -1,76 +1,140 @@
 package com.ikea.warehouse_command_api.exception;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.ikea.warehouse_command_api.util.ErrorMessages;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
-import org.springframework.validation.FieldError;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+import static com.ikea.warehouse_command_api.util.ErrorTypes.*;
+
 
 @RestControllerAdvice
+@Hidden
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-        pd.setTitle("Resource not found");
-        pd.setType(URI.create("https://httpstatuses.com/404"));
-        addCommonProperties(pd, request, Map.of("error", "RESOURCE_NOT_FOUND"));
-        return pd;
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    @ExceptionHandler(JsonProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleJsonProcessingException(JsonProcessingException ex, HttpServletRequest request) {
+        log.error("JSON Processing Exception occurred: {}", ex.getMessage(), ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            INVALID_JSON_FORMAT,
+            ErrorMessages.INVALID_JSON_FORMAT_PREFIX + ex.getOriginalMessage(),
+            HttpStatus.BAD_REQUEST.value(),
+            request.getRequestURI(),
+            LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    public ProblemDetail handleOptimistic(OptimisticLockingFailureException ex, HttpServletRequest request) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        pd.setTitle("Conflict: Optimistic Locking");
-        pd.setType(URI.create("https://httpstatuses.com/409"));
-        addCommonProperties(pd, request, Map.of("error", "OPTIMISTIC_LOCK_CONFLICT"));
-        return pd;
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        log.error("HTTP Media Type Not Supported Exception occurred: {}", ex.getMessage(), ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            UNSUPPORTED_MEDIA_TYPE,
+            ErrorMessages.CONTENT_TYPE_NOT_SUPPORTED,
+            HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+            request.getRequestURI(),
+            LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(errorResponse);
+    }
+
+
+    @ExceptionHandler(FileProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleFileProcessingException(FileProcessingException ex, HttpServletRequest request) {
+        log.error("FileProcessingException occurred: {}", ex.getMessage(), ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+            ex.getError(),
+            ex.getMessage(),
+            HttpStatus.BAD_REQUEST.value(),
+            request.getRequestURI(),
+            LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        log.error("Illegal Argument Exception occurred: {}", ex.getMessage(), ex);
+
+        String path = request.getRequestURI();
+        String message = ex.getMessage();
+        boolean notFound = message != null && message.toLowerCase().contains("not found");
+        HttpStatus status = notFound ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+        String errorCode = notFound ? NOT_FOUND : INVALID_ARGUMENT;
+        String clientMessage = notFound ? ErrorMessages.RESOURCE_NOT_FOUND : message;
+
+        ErrorResponse errorResponse = new ErrorResponse(
+            errorCode,
+            clientMessage,
+            status.value(),
+            path,
+            LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+
+        return ResponseEntity.status(status).body(errorResponse);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        pd.setTitle("Validation failed");
-        pd.setDetail("One or more request fields are invalid");
-        pd.setType(URI.create("https://httpstatuses.com/400"));
-        List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(this::toFieldErrorMap)
-                .toList();
-        pd.setProperty("errors", errors);
-        addCommonProperties(pd, request, Map.of("error", "VALIDATION_ERROR"));
-        return pd;
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        log.error("Validation failed: {}", ex.getMessage(), ex);
+        String uri = request.getRequestURI();
+        String message = uri != null && uri.contains("/inventory")
+                ? ErrorMessages.INVALID_INVENTORY_DATA
+                : ErrorMessages.INVALID_PRODUCTS_DATA;
+        ErrorResponse errorResponse = new ErrorResponse(
+                FILE_PROCESSING_ERROR,
+                message,
+                HttpStatus.BAD_REQUEST.value(),
+                uri,
+                LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLocking(OptimisticLockingFailureException ex, HttpServletRequest request) {
+        log.error("Optimistic locking conflict: {}", ex.getMessage(), ex);
+        ErrorResponse errorResponse = new ErrorResponse(
+                OPTIMISTIC_LOCK_CONFLICT,
+                ex.getMessage(),
+                HttpStatus.CONFLICT.value(),
+                request.getRequestURI(),
+                LocalDateTime.now().format(TIMESTAMP_FORMATTER)
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleOther(Exception ex, HttpServletRequest request) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
-        pd.setTitle("Internal Server Error");
-        pd.setType(URI.create("https://httpstatuses.com/500"));
-        addCommonProperties(pd, request, Map.of("error", "INTERNAL_ERROR"));
-        return pd;
-    }
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
+        log.error("Unexpected exception occurred: {}", ex.getMessage(), ex);
 
-    private Map<String, String> toFieldErrorMap(FieldError fe) {
-        return Map.of(
-                "field", fe.getField(),
-                "code", fe.getCode() != null ? fe.getCode() : "Invalid",
-                "message", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value"
+        ErrorResponse errorResponse = new ErrorResponse(
+            INTERNAL_SERVER_ERROR,
+            ErrorMessages.INTERNAL_SERVER_ERROR,
+            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+            request.getRequestURI(),
+            LocalDateTime.now().format(TIMESTAMP_FORMATTER)
         );
-    }
 
-    private void addCommonProperties(ProblemDetail pd, HttpServletRequest request, Map<String, Object> extra) {
-        String correlationId = request.getHeader("X-Correlation-ID");
-        if (correlationId != null && !correlationId.isBlank()) {
-            pd.setProperty("correlationId", correlationId);
-        }
-        extra.forEach(pd::setProperty);
-        pd.setProperty("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

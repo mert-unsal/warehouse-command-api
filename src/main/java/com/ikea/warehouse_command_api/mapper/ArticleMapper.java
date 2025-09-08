@@ -1,11 +1,14 @@
 package com.ikea.warehouse_command_api.mapper;
 
-import com.ikea.warehouse_command_api.data.dto.ArticleCommandRequest;
-import com.ikea.warehouse_command_api.data.dto.ArticleResponse;
 import com.ikea.warehouse_command_api.data.document.ArticleDocument;
+import com.ikea.warehouse_command_api.data.request.ArticleCommandRequest;
+import com.ikea.warehouse_command_api.data.response.ArticleResponse;
 import org.bson.types.ObjectId;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
+
+import java.util.Optional;
 
 @Mapper(componentModel = "spring")
 public interface ArticleMapper {
@@ -14,12 +17,14 @@ public interface ArticleMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "lastModifiedDate", ignore = true)
-    ArticleDocument toDocument(ArticleCommandRequest req);
+    ArticleDocument toDocument(ArticleCommandRequest articleCommandRequest);
 
-    @Mapping(target = "id", expression = "java(doc.id() != null ? doc.id().toHexString() : null)")
-    ArticleResponse toResponse(ArticleDocument doc);
+    @Mapping(source = "id", target = "id", qualifiedByName = "objectIdToString")
+    ArticleResponse toResponse(ArticleDocument articleDocument);
 
-    default ObjectId toObjectId(String id) {
-        return id == null ? null : new ObjectId(id);
+    @Named("objectIdToString")
+    default String objectIdToString(ObjectId objectId) {
+        return Optional.ofNullable(objectId).map(ObjectId::toHexString).orElse(null);
     }
+
 }
