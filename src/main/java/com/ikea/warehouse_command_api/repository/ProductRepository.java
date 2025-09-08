@@ -1,4 +1,4 @@
-package com.ikea.warehouse_command_api.data.repository;
+package com.ikea.warehouse_command_api.repository;
 
 import com.ikea.warehouse_command_api.data.document.ProductDocument;
 import org.bson.types.ObjectId;

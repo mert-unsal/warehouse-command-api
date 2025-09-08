@@ -9,10 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,20 +26,20 @@ public class ArticleController {
         return ResponseEntity.status(HttpStatus.CREATED).body(articleResponse);
     }
 
-//    @PutMapping("/{id}")
-//    @Operation(summary = "Update an existing article with optimistic locking")
-//    public ResponseEntity<ArticleResponse> update(@PathVariable("id") String id,
-//                                                  @RequestParam(value = "expectedVersion", required = false) Long expectedVersion,
-//                                                  @RequestBody @jakarta.validation.Valid ArticleCommandRequest request) {
-//        ArticleResponse updatedArticleDocument = articleService.update(id, request, expectedVersion);
-//        return ResponseEntity.ok(updatedArticleDocument);
-//    }
-//
-//    @DeleteMapping("/{id}")
-//    @Operation(summary = "Delete an article with optimistic locking")
-//    public ResponseEntity<Void> delete(@PathVariable("id") String id,
-//                                       @RequestParam(value = "expectedVersion", required = false) Long expectedVersion) {
-//        articleService.delete(new ObjectId(id), expectedVersion);
-//        return ResponseEntity.noContent().build();
-//    }
+    @PatchMapping("/{id}")
+    @Operation(summary = "Update an existing article with optimistic locking")
+    public ResponseEntity<ArticleResponse> update(@PathVariable("id") String id,
+                                                  @RequestBody @Valid ArticleCommandRequest articleCommandRequest) {
+        ArticleResponse updatedArticleDocument = articleService.update(id, articleCommandRequest);
+        return ResponseEntity.ok(updatedArticleDocument);
+    }
+
+    @PostMapping("/{id}/decrease")
+    @Operation(summary = "Decrease an amount of existing article with optimistic locking")
+    public ResponseEntity<Void> decreaseStock(@PathVariable("id") String id,
+                                                         @RequestBody @Valid ArticleCommandRequest articleCommandRequest) {
+        articleService.decreaseAmount(id, articleCommandRequest);
+        return ResponseEntity.ok().build();
+    }
+
 }

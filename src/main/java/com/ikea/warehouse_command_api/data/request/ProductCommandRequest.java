@@ -1,5 +1,6 @@
-package com.ikea.warehouse_command_api.data.dto;
+package com.ikea.warehouse_command_api.data.request;
 
+import com.ikea.warehouse_command_api.data.dto.ArticleAmount;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
