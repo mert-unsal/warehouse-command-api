@@ -31,7 +31,7 @@ public class MongoConfig {
     public MongoClient mongoClient() {
         MongoClientSettings.Builder builder = MongoClientSettings.builder()
             .readConcern(ReadConcern.MAJORITY)
-            .readPreference(ReadPreference.secondary())
+            .readPreference(ReadPreference.primary())
             .writeConcern(WriteConcern.MAJORITY.withJournal(true));
 
         assert StringUtils.isNotBlank(mongoUri);
@@ -51,7 +51,6 @@ public class MongoConfig {
         return template;
     }
 
-    // Enable transactions (requires replica set)
     @Bean
     public MongoTransactionManager transactionManager(MongoDatabaseFactory factory) {
         return new MongoTransactionManager(factory);

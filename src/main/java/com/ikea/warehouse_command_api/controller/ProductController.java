@@ -6,6 +6,7 @@ import com.ikea.warehouse_command_api.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,14 @@ public class ProductController {
                                                   @RequestBody @Valid ProductCommandRequest productUpdateRequest) {
         ProductResponse productResponse = productService.update(id,productUpdateRequest);
         return ResponseEntity.ok(productResponse);
+    }
+
+    @PostMapping("/{id}/sell")
+    @Operation(summary = "Sell a product and update its stock according to the product definition")
+    public ResponseEntity<Void> decrease(@PathVariable("id") @NotEmpty String id,
+                                         @RequestParam @Min(1) Long count) {
+        productService.decreaseStock(id, count);
+        return ResponseEntity.ok().build();
     }
 
 }

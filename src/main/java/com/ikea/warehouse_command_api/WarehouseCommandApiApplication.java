@@ -12,7 +12,7 @@ import org.springframework.retry.annotation.EnableRetry;
 @SpringBootApplication
 public class WarehouseCommandApiApplication {
 
-	public static void main(String[] args) {
+	static void main(String[] args) {
 		SpringApplication.run(WarehouseCommandApiApplication.class, args);
 	}
 
